@@ -6,76 +6,39 @@ Level 0:    [A]->[B]->[C]->...->[M]->...->[R]->[S]->[T]->...->[Z]
 use rand::{Rng};
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::cmp::Ordering;
 
 /*
     Reference counted nodes.  READ MORE ABOUT THIS TO BETTER UNDERSTAND THE WHY. 
     All will be 'max_level' to simplify traversal logic and bounds check, trading off for memory efficiency.   
 */
 type Link<K, V> = Option<Rc<RefCell<Node<K, V>>>>;
-enum Node<K, V> {
-    Head {
-        fwd: Vec<Link<K, V>>,
-        lvl: usize,
-    },
-    Entry {
-        k: K,
-        v: V,
-        lvl: usize,
-        fwd: Vec<Link<K, V>>,
-    },
+
+struct Node<K, V> {
+    key: Option<K>,
+    val: Option<V>,
+    lvl: usize,
+    fwd: Vec<Link<K, V>>,
 }
 
 impl<K, V> Node<K, V> {
-    fn head(_lvl: usize) -> Self {
-        Node::Head {
-            fwd: vec![None; _lvl],
+    fn head(_max: usize) -> Self {
+        Node {
+            key: None, 
+            val: None, 
+            lvl: _max,
+            fwd: vec![None; _max],
+        }
+    }
+
+    fn entry(_k: K, _v: V, _lvl: usize, _max: usize) -> Self {
+        Node {
+            key: Some(_k),
+            val: Some(_v),
             lvl: _lvl,
+            fwd: vec![None; _max],
         }
-    }
-
-    fn entry(_k: K, _v: V, _lvl: usize) -> Self {
-        Node::Entry {
-            k: _k,
-            v: _v,
-            lvl: _lvl,
-            fwd: vec![None; _lvl],
-        }
-    }
-
-    fn get_fwd(&self) -> &Vec<Link<K, V>> {
-        match self {
-            Node::Head { fwd, .. } => fwd,
-            Node::Entry { fwd, .. } => fwd,
-        }
-    }
-
-    fn get_fwd_mut(&mut self) -> &mut Vec<Link<K, V>> {
-        match self {
-            Node::Head { fwd, .. } => fwd,
-            Node::Entry { fwd, .. } => fwd,
-        }
-    }
-    
-    fn get_lvl(&self) -> usize {
-        match self {
-            Node::Head { lvl, .. } => *lvl,
-            Node::Entry { lvl, .. } => *lvl,
-        }
-    }
-
-    fn get_key(&self) -> Option<&K> {
-        match self {
-            Node::Head { .. } => None,
-            Node::Entry { k, .. } => Some(k),
-        }
-    }
-
-    fn get_val(&self) -> Option<&V> {
-        match self {
-            Node::Head { .. } => None,
-            Node::Entry { v, .. } => Some(v),
-        }
-    }       
+    }    
 }
 
 struct SkipList<K, V> 
@@ -146,7 +109,7 @@ impl<K: Ord, V> SkipList<K, V>
 
         // Create new node and insert.
         let _lvl = self.random_level();
-        let new = Box::new(Node::new(_k, _v, _lvl));
+        // let new = Box::new(Node::new(_k, _v, _lvl));
         let new_ptr = Box::into_raw(new);
 
         // Insert at all levels from 0 to _lvl - 1.
@@ -162,46 +125,42 @@ impl<K: Ord, V> SkipList<K, V>
         None
     }
     /*
-        Here we're not considering what if the value we're on is the same as the key. This is an optimization.
+        TODO: Let's do a test case for the Get function.
      */
-    fn get(&self, _k: K) -> Option<V> where V: Clone {
-        let mut curr = self.head.clone();
+    fn get(&self, _k: K) -> Option<V> 
+    where 
+        K: Ord,
+        V: Clone 
+    {
+        let mut curr = Rc::clone(&self.head);
 
-        // Traverse from top to bottom.
         for level in (0..self.max).rev() {
             loop {
-                let curr_ref = curr.borrow();
+                let next = {
+                    let curr_ref = curr.borrow();
+                    curr_ref.fwd[level].clone()
+                };
 
-                if curr_ref.get_lvl() <= level {
-                    break;
-                }
-
-                let next_opt = curr_ref.get_fwd()[level].clone();
-                drop(curr_ref);
-
-                if let Some(next) = next_opt {
-                    let next_ref = next.borrow();
-                    if let Some(k) = next_ref.get_key() {
-                        if k < &_k {
-                            drop(next_ref);
-                            curr = next;
-                            continue;
-                        } else {
-                            break;
+                match next {
+                    Some(node) => {
+                        match {
+                            let node_ref = node.borrow();
+                            node_ref.key.as_ref().map(|k| k.cmp(&_k)) 
+                        } {
+                            Some(Ordering::Less) => {
+                                curr = node;
+                            }
+                            Some(Ordering::Equal) => {
+                                return node.borrow().val.clone();
+                            }
+                            _ => break,
                         }
                     }
+                    None => break,
                 }
             }
         }
 
-        // Check if next node at level 0 has the key. 
-        if let Some(next) = curr.borrow().get_fwd()[0].clone() {
-            if let Some(k) = next.borrow().get_key() {
-                if k == &_k {
-                    return next.borrow().get_val().cloned();
-                }
-            }
-        }
         None
     }
 
