@@ -71,57 +71,18 @@ impl<K: Ord, V> SkipList<K, V>
         lvl
     }
     
-    fn put(&mut self, _k: K, _v: V) -> Option<V> {
-        let mut updates: Vec<*mut Node<K, V>> = vec![std::ptr::null_mut(); self.max];
-        let mut curr = self.head.as_mut() as *mut Node<K, V>;
+    fn put(&mut self, _k: K, _v: V) -> Option<V>
+    where
+        K: Ord,
+        V: Clone,
+    {
+        // Setup, create the update array, pointer to the current node, etc. 
+        let mut update: Vec<Option<Rc<RefCell<Node<K, V>>>>> = vec![None; self.max];
+        let mut curr = Rc::clone(&self.head);
 
-        // Traverse from top to bottom.
-        for level in (0..self.max).rev() {
-            unsafe {
-                while level < (*curr).level && !(*curr).fwd[level].is_null() {
-                    let next = (*curr).fwd[level];
-                    if let Some(k) = &(*next).key {
-                        if k < &_k {
-                            curr = next;
-                        } else {
-                            break;
-                        }
-                    } else {
-                        break;
-                    }
-                }
-                updates[level] = curr;
-            }
-        }
+        // Search step, traverse the list to find the predecessors.
 
-        // Check if key already exists (update case).
-        unsafe {
-            if !(*curr).fwd[0].is_null() {
-                let next = (*curr).fwd[0];
-                if let Some(k) = &(*next).key {
-                    if k == &_k {
-                        // Key exists - update and return old value
-                        return (*next).val.replace(_v);
-                    }
-                }
-            }
-        }
-
-        // Create new node and insert.
-        let _lvl = self.random_level();
-        // let new = Box::new(Node::new(_k, _v, _lvl));
-        let new_ptr = Box::into_raw(new);
-
-        // Insert at all levels from 0 to _lvl - 1.
-
-        unsafe {
-            for level in 0.._lvl.min(self.max) {
-                (*new_ptr).fwd[level] = (*updates[level]).fwd[level];
-                (*updates[level]).fwd[level] = new_ptr;
-            }
-        }
-        
-        self.len += 1;
+        // Insert step, insert the nodes at the appropriate locations within each level. 
         None
     }
     /*
@@ -190,3 +151,4 @@ impl<K: Ord, V> SkipList<K, V>
         self.len 
     }
 }
+
