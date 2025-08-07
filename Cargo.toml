@@ -1,7 +1,18 @@
 [package]
-name = "rusty-lsm"
+name = "skiplist-rs"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "Educational skip list implementation in Rust - demonstrates dynamic level management and concurrency patterns"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourusername/skiplist-rs"
+homepage = "https://github.com/yourusername/skiplist-rs"
+keywords = ["education", "skiplist", "data-structure", "learning", "tutorial"]
+categories = ["data-structures", "educational"]
+readme = "README.md"
 
 [dependencies]
-rand = "0.8" 
+rand = "0.8"
+
+[dev-dependencies]
+# Development dependencies for testing 
