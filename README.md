@@ -1,6 +1,6 @@
 # skiplist-rs
 
-An educational skip list implementation in Rust-a probabilistic data structure.
+An educational Skiplist implementation in Rust-a probabilistic data structure.
 > **⚠️ Educational Project**: This is a learning implementation created for educational purposes. It is not intended for production use and has not been optimized or thoroughly tested for all edge cases.
 
 ## Quick Example
